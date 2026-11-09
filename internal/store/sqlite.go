@@ -115,10 +115,10 @@ func (s *SQLiteStore) List(sort SortField) ([]Chop, error) {
 		FROM chop
 	`
 	switch sort {
-	case "", SortByName:
-		query += " ORDER BY name"
-	case SortByColor:
+	case "", SortByColor:
 		query += " ORDER BY main_color"
+	case SortByName:
+		query += " ORDER BY name"
 	case SortByOrdered:
 		query += " ORDER BY ordered"
 	default:
