@@ -1,89 +1,107 @@
 # Chop
 
-Chop es una CLI para guardar listas de comandos de terminal (las *chops*) y
-ejecutarlas después en orden. Sirve para esas secuencias que repites a menudo
-—desplegar, levantar un entorno, limpiar cachés— y que no merecen un script
-propio.
+Chop is a CLI for saving lists of terminal commands (*chops*) and running them
+later. It's meant for those sequences you repeat often —deploying, spinning up
+an environment, clearing caches— that don't deserve a script of their own.
 
-Cada chop tiene un nombre, un color y, opcionalmente, numeración. Cada item
-guarda un comando, una descripción y el color con que se muestra cada uno.
-Todo se guarda en una base de datos SQLite local.
+Each chop has a name, a color and, optionally, numbering. Each item stores a
+command, a description and the color each one is shown in. Everything is kept
+in a local SQLite database.
 
-## Requisitos
+## Requirements
 
-- Go 1.27.2 o superior
-- `sh` en el `PATH` (los comandos se ejecutan con `sh -c`)
+- Go 1.27.2 or later
+- `sh` in your `PATH` (commands run with `sh -c`)
 
-No hace falta CGO: el driver de SQLite ([modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite)) es Go puro.
+No CGO needed: the SQLite driver ([modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite)) is pure Go.
 
-## Instalación
+## Installation
 
 ```sh
 go install github.com/JacobsM14/chop@latest
 ```
 
-O clona el repositorio e instala con `make`:
+Or clone the repository and install with `make`:
 
 ```sh
-git clone <url-del-repo> chop
+git clone https://github.com/JacobsM14/chop chop
 cd chop
-make install   # instala el binario en $GOBIN o $GOPATH/bin
+make install   # installs the binary into $GOBIN or $GOPATH/bin
 ```
 
-Si prefieres no instalarlo, `make build` deja el binario en `bin/chop`.
+If you'd rather not install it, `make build` puts the binary in `bin/chop`.
 
-## Uso rápido
+## Quick start
 
 ```sh
-chop new deploy --color green --ordered   # crea una chop numerada
-chop add deploy                           # añade un item (formulario interactivo)
+chop new deploy --color green --ordered   # create a numbered chop
+chop add deploy                           # add an item (interactive form)
 chop add deploy
-chop get deploy                           # muestra sus items
-chop run deploy                           # pide confirmación y los ejecuta en orden
+chop get deploy                           # show its items
+chop run deploy                           # ask for confirmation and run them in order
 ```
 
-Salida de `chop get deploy` con dos items:
+Output of `chop get deploy` with two items:
 
 ```
 deploy
 ──────
-1. go test ./...: pasar los tests
-2. git push: subir los cambios
+1. go test ./...: run the tests
+2. git push: push the changes
 ```
 
-## Comandos
+## Item order
 
-| Comando | Alias | Descripción |
+How items are ordered depends on whether the chop is numbered:
+
+- **Numbered chops** (`--ordered`): items keep the order in which you added
+  them.
+- **Unnumbered chops**: items are grouped by the color of their command, sorted
+  alphabetically by color name (`blue`, `green`, `orange`, `purple`, `red`,
+  `white`).
+
+This order is the one used everywhere: `chop get` shows it, `chop run` runs the
+commands in it, and the item numbers for `rm-item` and `run --item` follow it.
+
+## Commands
+
+| Command | Alias | Description |
 |---|---|---|
-| `chop new <nombre>` | | Crea una chop |
-| `chop add <nombre>` | | Añade un item a una chop |
-| `chop ls` | | Lista todas las chops |
-| `chop get <nombre>` | `ver` | Muestra una chop y sus items |
-| `chop run <nombre>` | | Ejecuta los comandos de una chop en orden |
-| `chop rm-item <nombre> [n]` | | Elimina un item de una chop |
-| `chop delete <nombre>` | `rm` | Elimina una chop y todos sus items |
+| `chop new <name>` | | Create a chop |
+| `chop add <name>` | | Add an item to a chop |
+| `chop ls` | | List all chops |
+| `chop get <name>` | `ver` | Show a chop and its items |
+| `chop run <name>` | | Run the commands of a chop (see [Item order](#item-order)) |
+| `chop rm-item <name> [n]` | | Remove an item from a chop |
+| `chop delete <name>` | `rm` | Delete a chop and all its items |
 
 ### `new`
 
 ```sh
-chop new <nombre> [--color <color>] [--ordered]
+chop new <name> [--color <color>] [--ordered]
 ```
 
-- Sin flags, abre un formulario que pide el color y si la lista es numerada.
-- Con `--ordered` pero sin `--color`, solo pregunta el color.
-- Con `--color`, no pregunta nada; la lista queda sin numerar salvo que pases `--ordered`.
+- Without flags, opens a form that asks for the color and whether the list is
+  numbered.
+- With `--ordered` but no `--color`, it only asks for the color.
+- With `--color`, it asks nothing; the list is unnumbered unless you pass
+  `--ordered`.
 
-Colores válidos: `red`, `green`, `blue`, `purple`, `orange`, `white`.
+`--ordered` doesn't only number the list: it also keeps items in the order you
+added them. Without it, items are grouped by color (see [Item order](#item-order)).
+
+Valid colors: `red`, `green`, `blue`, `purple`, `orange`, `white`.
 
 ### `add`
 
 ```sh
-chop add <nombre>
+chop add <name>
 ```
 
-Siempre es interactivo. Pide el comando, la descripción (ninguno puede estar
-vacío) y el color de cada uno. Por defecto, el comando sale en `purple` y la
-descripción en `white`. El item se añade al final de la lista.
+Always interactive. Asks for the command, the description (neither can be
+empty) and the color of each one. By default the command is shown in `purple`
+and the description in `white`. In numbered chops the item is appended to the
+end of the list; in unnumbered ones it shows up in its color group.
 
 ### `ls`
 
@@ -91,69 +109,72 @@ descripción en `white`. El item se añade al final de la lista.
 chop ls [--sort name|color|ordered]
 ```
 
-Muestra el nombre de cada chop en su color. Por defecto ordena por nombre.
+Shows each chop's name in its color. Sorted by name by default.
 
 ### `get`
 
 ```sh
-chop get <nombre>
+chop get <name>
 ```
 
-Muestra el título y los items. Las chops numeradas usan `1.`, `2.`…; las demás, `-`.
+Shows the title and the items. Numbered chops use `1.`, `2.`…; the others use
+`-`. Items appear in the order described in [Item order](#item-order).
 
 ### `run`
 
 ```sh
-chop run <nombre> [flags]
+chop run <name> [flags]
 ```
 
-Antes de ejecutar, enseña la lista de comandos y pide confirmación. Cada
-comando corre con `sh -c` conectado a tu terminal, así que los comandos
-interactivos funcionan. Por defecto se detiene en el primer comando que falla.
+Before running, it shows the list of commands and asks for confirmation. The
+commands run in the same order `chop get` shows them. Each command runs with
+`sh -c` attached to your terminal, so interactive commands work. By default it
+stops at the first command that fails.
 
-| Flag | Descripción |
+| Flag | Description |
 |---|---|
-| `-i, --item N` | Ejecuta solo el item N (con la numeración de `chop get`) |
-| `--dry-run` | Imprime los comandos sin ejecutarlos ni pedir confirmación |
-| `--continue` | Sigue con el resto aunque un comando falle; al final informa de cuántos fallaron |
-| `-y, --yes` | No pide confirmación |
+| `-i, --item N` | Run only item N (using the numbering from `chop get`) |
+| `--dry-run` | Print the commands without running them or asking for confirmation |
+| `--continue` | Keep going even if a command fails; at the end it reports how many failed |
+| `-y, --yes` | Don't ask for confirmation |
 
-`Ctrl+C` interrumpe el comando en curso y detiene la ejecución.
+`Ctrl+C` interrupts the running command and stops the run.
 
 ### `rm-item`
 
 ```sh
-chop rm-item <nombre> [n]
+chop rm-item <name> [n]
 ```
 
-Elimina el item `n` (con la numeración de `chop get`). Si no indicas `n`, abre
-un selector para elegirlo.
+Removes item `n` (using the numbering from `chop get`). If you don't give `n`,
+it opens a picker to choose it.
 
 ### `delete`
 
 ```sh
-chop delete <nombre> [-y]
+chop delete <name> [-y]
 ```
 
-Elimina la chop y todos sus items. Pide confirmación salvo que pases `-y`/`--yes`.
+Deletes the chop and all its items. Asks for confirmation unless you pass
+`-y`/`--yes`.
 
-## Configuración
+## Configuration
 
-La base de datos se guarda en `~/.local/share/chop/chop.db`. El directorio se
-crea automáticamente la primera vez.
+The database is stored at `~/.local/share/chop/chop.db`. The directory is
+created automatically the first time.
 
-Para usar otra ruta, define `CHOP_DB`:
+To use a different path, set `CHOP_DB`:
 
 ```sh
-CHOP_DB=/tmp/pruebas.db chop ls
+CHOP_DB=/tmp/test.db chop ls
 ```
 
-Es útil para probar sin tocar tus chops reales.
+Handy for testing without touching your real chops.
 
-## Autocompletado
+## Shell completion
 
-`chop completion <shell>` genera el script de autocompletado. Para cargarlo en
-cada sesión, añade a tu configuración de shell:
+`chop completion <shell>` generates the completion script. To load it in every
+session, add this to your shell config:
 
 ```sh
 source <(chop completion zsh)    # ~/.zshrc
@@ -161,31 +182,30 @@ source <(chop completion bash)   # ~/.bashrc
 chop completion fish | source    # ~/.config/fish/config.fish
 ```
 
-Además de subcomandos y flags, completa los nombres de tus chops
-(`chop run <TAB>`), los números de item de `rm-item` y `run --item` (con el
-comando como descripción), los colores de `new --color` y los valores de
-`ls --sort`.
+Besides subcommands and flags, it completes your chop names
+(`chop run <TAB>`), item numbers for `rm-item` and `run --item` (with the
+command as description), colors for `new --color` and values for `ls --sort`.
 
-## Desarrollo
+## Development
 
 ```sh
-make            # compila en bin/chop (objetivo por defecto)
+make            # build into bin/chop (default target)
 make run ARGS="get deploy"
-make test       # tests con -race
+make test       # tests with -race
 make check      # fmt + vet + test
-make help       # lista todos los objetivos
+make help       # list all targets
 ```
 
-Estructura del proyecto:
+Project layout:
 
 ```
 .
 ├── main.go
-├── cmd/                 # un archivo por subcomando (cobra)
+├── cmd/                 # one file per subcommand (cobra)
 └── internal/
-    ├── store/           # interfaz Store e implementación SQLite
-    ├── render/          # colores y formato de salida (lipgloss)
-    └── runner/          # ejecución de comandos con sh -c
+    ├── store/           # Store interface and SQLite implementation
+    ├── render/          # colors and output formatting (lipgloss)
+    └── runner/          # command execution with sh -c
 ```
 
-Los formularios interactivos usan [huh](https://github.com/charmbracelet/huh).
+Interactive forms use [huh](https://github.com/charmbracelet/huh).
