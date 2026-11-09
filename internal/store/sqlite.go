@@ -85,12 +85,18 @@ func (s *SQLiteStore) Get(name string) (Chop, error) {
 		return Chop{}, err
 	}
 
-	rows, err := s.db.Query(`
+	query := `
 		SELECT id, text, text_color, description, description_color, position
 		FROM items
 		WHERE chop_id = ?
-		ORDER BY position
-	`, chop.ID)
+	`
+	if chop.Ordered {
+		query += " ORDER BY position"
+	} else {
+		query += " ORDER BY text_color"
+	}
+
+	rows, err := s.db.Query(query, chop.ID)
 	if err != nil {
 		return Chop{}, err
 	}
